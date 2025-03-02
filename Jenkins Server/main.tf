@@ -74,6 +74,7 @@ module "ec2_instance_jenkins" {
   vpc_security_group_ids      = [module.jenkins_sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]
   associate_public_ip_address = true
+  ami                         = data.aws_ami.example.id # ✅ Explicitly set AMI
   user_data                   = file("jenkins-install.sh")
   availability_zone           = data.aws_availability_zones.azs.names[0]
 
