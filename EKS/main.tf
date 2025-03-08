@@ -32,6 +32,54 @@ module "vpc" {
   }
 }
 
+# Security Group for EKS Worker Nodes
+module "eks_worker_sg" {
+  source = "terraform-aws-modules/security-group/aws"
+
+  name        = "EKS Worker Nodes"
+  description = "Security group for EKS worker nodes"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      description = "Allow SSH access to Worker Nodes"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 1025
+      to_port     = 65535
+      protocol    = "tcp"
+      description = "Node-to-node communication"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = -1
+      to_port     = -1
+      protocol    = "icmp"
+      description = "Allow ICMP ping"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      description = "Allow all outbound traffic"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  tags = {
+    Name = "eks-worker-sg"
+  }
+}
+
+# EKS Managed Node Group with Key Pair
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -40,33 +88,23 @@ module "eks" {
   cluster_version = "1.31"
 
   bootstrap_self_managed_addons = false
-
-
-  # Optional
   cluster_endpoint_public_access = true
-
-  # Optional: Adds the current caller identity as an administrator via cluster access entry
   enable_cluster_creator_admin_permissions = true
 
-  vpc_id = module.vpc.vpc_id
-  # I want to deploy eks in privte subnet
+  vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
-
-
-
-  # EKS Managed Node Group(s)
-
 
   eks_managed_node_groups = {
     example = {
-      # Starting on 1.30, AL2023 is the default AMI type for EKS managed node groups
       ami_type       = "AL2023_x86_64_STANDARD"
-      #instance_types = ["t2.medium"]
       instance_types = ["t2.micro"]
 
       min_size     = 2
       max_size     = 5
       desired_size = 2
+      
+      key_name = "aws-keypair" # 🔥 Add Key Pair for SSH Access 🔥
+      vpc_security_group_ids = [module.eks_worker_sg.security_group_id] # Attach SG
     }
   }
 
