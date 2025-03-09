@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app1
+  labels:
+    app: app1  # Changed from nginx to app1
+spec:
+  ports:
+  - name: http
+    port: 80  # External service port
+    protocol: TCP
+    targetPort: 80  # Should match containerPort in Deployment
+  selector:
+    app: app1  # Changed from nginx to app1
+  type: LoadBalancer
